@@ -6,6 +6,7 @@ supabase>=2.0.0
 pycryptodome==3.19.0
 urllib3==2.1.0
 flask-compress
+pytz
 waitress
 orjson
 pywebview

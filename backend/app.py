@@ -1,8 +1,10 @@
+
 from flask import Flask, render_template, jsonify, make_response, request, session, redirect, url_for
 from flask_cors import CORS
 from functools import wraps
 import requests
 import sys
+import pytz
 from datetime import datetime, timedelta, timezone
 import sqlite3
 import urllib3
@@ -276,6 +278,11 @@ def get_history_points(door_number: str, minutes: int = 15, max_points: int = 18
         return []
 
     history = []
+    # ŞİMDİ (Türkiye Saati)
+    tz = pytz.timezone('Europe/Istanbul')
+    now = datetime.now(tz)
+    current_date_str = now.strftime("%d-%m-%Y")
+    current_time_str = now.strftime("%H:%M:%S")
     for lat, lng, ts in rows:
         try:
             dt = datetime.fromtimestamp(ts)
