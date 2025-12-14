@@ -1,11 +1,11 @@
-const CACHE_NAME = 'iett-pc-v1';
+const CACHE_NAME = 'iett-pc-v2';
 const urlsToCache = [
-    '/',
-    '/static/css/style.css',
-    '/static/js/main.js',
-    '/static/img/icon.ico',
-    '/static/img/ibb_logo.png',
-    '/static/img/iett_logo.png'
+    './',
+    './static/css/style.css',
+    './static/js/main.js',
+    './static/img/icon.ico',
+    './static/img/ibb_logo.png',
+    './static/img/iett_logo.png'
 ];
 
 self.addEventListener('install', event => {
