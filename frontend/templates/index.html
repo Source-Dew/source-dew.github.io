@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>İETT Anlık PC Veri</title>
+    <link rel="icon" href="/static/img/icon.ico" type="image/x-icon" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <!-- İkon Paketi -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <!-- Leaflet Harita Kütüphanesi -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="manifest" href="/static/manifest.json">
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/js/sw.js')
+                    .then(reg => console.log('SW registered'))
+                    .catch(err => console.log('SW failed', err));
+            });
+        }
+    </script>
+    <style>
+        /* System Health Pulse Animation */
+        .system-health {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(15, 23, 42, 0.6);
+            padding: 6px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-right: 15px;
+        }
+
+        .pulse-dot {
+            width: 10px;
+            height: 10px;
+            background-color: #22c55e;
+            border-radius: 50%;
+            box-shadow: 0 0 0 rgba(34, 197, 94, 0.7);
+            animation: pulse-green 2s infinite;
+        }
+
+        .pulse-dot.error {
+            background-color: #ef4444;
+            box-shadow: 0 0 0 rgba(239, 68, 68, 0.7);
+            animation: pulse-red 2s infinite;
+        }
+
+        @keyframes pulse-green {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+            }
+
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
+            }
+
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+            }
+        }
+
+        @keyframes pulse-red {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            }
+
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+            }
+
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <script>
+        // Force window to maximize
+        try {
+            window.moveTo(0, 0);
+            window.resizeTo(screen.availWidth, screen.availHeight);
+        } catch (e) { console.log('Resize blocked'); }
+    </script>
+    <div class="container">
+        <div class="header">
+            <div class="logo-section">
+                <div class="logo-container">
+                    <img src="/static/img/ibb_logo.png" alt="IBB Logo">
+                    <div class="logo-divider"></div>
+                    <img src="/static/img/iett_logo.png" alt="IETT Logo">
+                </div>
+                <div class="title-section">
+                    <!-- Navigation Tabs -->
+                    <div class="nav-tabs-header">
+                        <div class="nav-tab-item active" onclick="switchTab('dashboard')">
+                            <i class="fas fa-home"></i> ANA PANEL
+                        </div>
+                        <div class="nav-tab-divider"></div>
+                        <div class="nav-tab-item" onclick="switchTab('monitor')">
+                            <i class="fas fa-grid-2"></i> ÇOKLU İZLEME
+                        </div>
+                        <div class="nav-tab-divider"></div>
+                        <div class="nav-tab-item" onclick="switchTab('batch')">
+                            <i class="fas fa-layer-group"></i> TOPLU ANALİZ
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="clock-section">
+                <div class="system-health" id="systemStatus">
+                    <div class="pulse-dot" id="pulseDot"></div>
+                    <span style="color:white; font-size:12px; font-weight:600;" id="pulseText">SİSTEM AKTİF</span>
+                </div>
+                <!-- Monitor Button Removed -->
+                <div class="clock-divider"></div>
+
+                <div class="clock-info">
+                    <div class="clock" id="clock">--:--:--</div>
+                    <div class="clock-label">
+                        Sistem Saati
+                        <div class="loading-spinner" id="spinner"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="filter-section">
+            <div class="filter-row">
+                <div class="filter-tabs">
+                    <div class="filter-tab active" data-filter="all" onclick="filterVehicles('all')">TÜMÜ <span
+                            class="count" id="count-all">0</span></div>
+                    <div class="filter-tab" data-filter="active" onclick="filterVehicles('active')">AKTİF <span
+                            class="count" id="count-active">0</span></div>
+                    <div class="filter-tab" data-filter="inactive" onclick="filterVehicles('inactive')">PASİF <span
+                            class="count" id="count-inactive">0</span></div>
+                </div>
+
+                <div class="company-filter">
+                    <select id="companyFilter" onchange="handleCompanyChange(this.value)">
+                        <option value="all">Tüm Şirketler Yükleniyor...</option>
+                    </select>
+                </div>
+
+                <div class="filter-actions">
+                    <button class="stale-btn" id="staleBtn" onclick="toggleStaleFilter()">24s+ Pasif</button>
+                    <button class="export-btn" onclick="downloadExcel()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M12 3v14m0 0l-4-4m4 4l4-4" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round" />
+                            <rect x="4" y="17" width="16" height="4" rx="1.5" stroke-width="2" />
+                        </svg>
+                        EXCEL
+                    </button>
+                    <div class="filter-search">
+                        <input type="search" id="searchInput" placeholder="Araç ara (kapı no, firma)"
+                            oninput="handleSearch(this.value)" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-layout">
+            <div class="sidebar">
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-title">Toplam Araç</div><svg class="stat-icon" fill="none" stroke="#60a5fa"
+                            viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="10" stroke-width="2" />
+                        </svg>
+                    </div>
+                    <div class="stat-value blue" id="totalVehicles">0</div>
+                    <div class="stat-label">Araç Sayısı</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-title">Aktif Çalışan</div><svg class="stat-icon" fill="none" stroke="#34d399"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    <div class="stat-value green" id="activeVehicles">0</div>
+                    <div class="stat-label">Çalışan Araç</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div class="stat-title">Çalışmayan</div><svg class="stat-icon" fill="none" stroke="#f87171"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </div>
+                    <div class="stat-value red" id="inactiveVehicles">0</div>
+                    <div class="stat-label">Pasif Araç</div>
+                </div>
+            </div>
+
+            <div class="content-area">
+                <div class="content-header">
+                    <div class="content-title" id="contentTitle">Tüm Araçlar</div>
+                    <div class="list-count" id="listCount">0 Araç</div>
+                </div>
+                <div class="vehicle-list" id="vehicleList">
+                    <div class="empty-state">Veriler yükleniyor...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Harita Modalı -->
+    <div class="modal-overlay" id="mapModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title" id="mapVehicleTitle">Canlı Araç Konumu</div>
+                <div class="modal-info-badges">
+                    <div class="info-badge" id="mapDateBadge">--</div>
+                    <div class="info-badge" id="mapTimeBadge">--</div>
+                </div>
+                <button class="modal-close" onclick="closeMap()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="modal-body-grid" style="grid-template-columns: 280px 1fr 300px;">
+
+                <!-- 1. SOL PANEL: ARAÇ DETAYLARI -->
+                <div class="detail-panel">
+                    <div class="detail-header-title">Araç Künyesi</div>
+                    <div class="detail-content">
+
+                        <!-- Plaka & Hız -->
+                        <div class="detail-card main-card">
+                            <div class="detail-row">
+                                <span class="d-label">PLAKA</span>
+                                <span class="d-value-lg" id="d-plate">--</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="d-label">HIZ</span>
+                                <span class="d-value-lg speed" id="d-speed">0 <span
+                                        style="font-size:12px">km/s</span></span>
+                            </div>
+                        </div>
+
+                        <!-- Marka / Model -->
+                        <div class="detail-item">
+                            <i class="fas fa-bus"></i>
+                            <div>
+                                <div class="d-sub">MARKA / MODEL</div>
+                                <div class="d-val" id="d-brand">--</div>
+                            </div>
+                        </div>
+
+                        <!-- Yıl / Tip -->
+                        <div class="detail-item">
+                            <i class="fas fa-calendar-alt"></i>
+                            <div>
+                                <div class="d-sub">MODEL YILI</div>
+                                <div class="d-val" id="d-year">--</div>
+                            </div>
+                        </div>
+
+
+                        <!-- Şoför Bilgisi -->
+                        <div class="detail-item" style="border-left: 3px solid #f59e0b;">
+                            <i class="fas fa-id-card" style="color:#f59e0b;"></i>
+                            <div>
+                                <div class="d-sub">ŞOFÖR SİCİL NO</div>
+                                <div class="d-val" id="d-driver">Yükleniyor...</div>
+                            </div>
+                        </div>
+
+                        <!-- Kapasite -->
+                        <div class="detail-section-title">KAPASİTE</div>
+                        <div class="capacity-grid">
+                            <div class="cap-item">
+                                <i class="fas fa-chair"></i>
+                                <span id="d-seat">0</span>
+                                <span class="cap-label">Koltuk</span>
+                            </div>
+                            <div class="cap-item">
+                                <i class="fas fa-users"></i>
+                                <span id="d-total">0</span>
+                                <span class="cap-label">Toplam</span>
+                            </div>
+                        </div>
+
+                        <!-- Özellikler -->
+                        <div class="detail-section-title">ÖZELLİKLER</div>
+                        <div class="features-grid">
+                            <div class="feat-badge" id="f-usb"><i class="fab fa-usb"></i> USB</div>
+                            <div class="feat-badge" id="f-wifi"><i class="fas fa-wifi"></i> WIFI</div>
+                            <div class="feat-badge" id="f-air"><i class="fas fa-snowflake"></i> KLİMA</div>
+                            <div class="feat-badge" id="f-access"><i class="fas fa-wheelchair"></i> ENGEL</div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- 2. ORTA PANEL: HARİTA -->
+                <div
+                    style="position: relative; background: #f3f4f6; border-left:1px solid #e5e7eb; border-right:1px solid #e5e7eb;">
+                    <div id="map"></div>
+                    <a id="directionsBtn" class="directions-btn" href="#" target="_blank">
+                        <i class="fas fa-route"></i> Yol Tarifi
+                    </a>
+                </div>
+
+                <div class="task-panel">
+                    <div class="task-header-title">Aracın Görevleri (Bugün)</div>
+                    <div class="task-table-container">
+                        <table class="task-table">
+                            <thead>
+                                <tr>
+                                    <th>Hat</th>
+                                    <th>Kalkış</th>
+                                    <th>Saat</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mapTaskTableBody">
+                                <!-- JS ile doldurulacak -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADMIN MODAL -->
+    <div class="modal-overlay" id="adminModal">
+        <div class="modal-content" style="max-width: 800px; height: auto; max-height: 90vh;">
+            <div class="modal-header">
+                <div class="modal-title">Yönetici Paneli</div>
+                <button class="modal-close" onclick="closeAdminPanel()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="modal-body" style="padding: 20px;">
+                <!-- Add User Form -->
+                <div class="admin-form-section">
+                    <h4
+                        style="margin-bottom: 16px; font-size: 13px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">
+                        Yeni Kullanıcı Ekle
+                    </h4>
+                    <form onsubmit="event.preventDefault(); addUser();" style="display: flex; gap: 12px;">
+                        <input type="text" id="newUsername" class="admin-input" placeholder="Kullanıcı Adı"
+                            style="flex: 1;" autocomplete="off">
+                        <input type="password" id="newPassword" class="admin-input" placeholder="Şifre" style="flex: 1;"
+                            autocomplete="new-password">
+                        <button type="submit" class="admin-btn-primary">
+                            <i class="fas fa-plus" style="margin-right: 6px;"></i>Ekle
+                        </button>
+                    </form>
+                </div>
+
+                <div class="admin-table-container">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 80px;">ID</th>
+                                <th>Kullanıcı</th>
+                                <th style="width: 100px; text-align: right;">İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userTableBody">
+                            <!-- JS ile doldurulacak -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Profile Section -->
+    <div class="user-profile-section">
+        <div class="profile-content-wrapper">
+            <img src="/static/img/iett_logo.png" alt="Profile" class="profile-img">
+            <div class="profile-info">
+                <div class="profile-name">{{ username }}</div>
+                <div class="profile-role">
+                    {% if username == 'admin' %}Yönetici{% else %}Personel{% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="profile-actions">
+            {% if username == 'admin' %}
+            <button onclick="openAdminPanel()" class="admin-panel-btn" title="Admin Paneli">
+                <i class="fas fa-shield-alt"></i>
+            </button>
+            {% endif %}
+            <a href="/logout" class="logout-btn" title="Çıkış Yap">
+                <i class="fas fa-power-off"></i>
+            </a>
+        </div>
+    </div>
+
+    <script src="/static/js/main.js?v=1.4"></script>
+
+    <!-- IN-APP MONITOR VIEW OVERLAY -->
+    <div id="monitor-view-container"
+        style="display:none; position:fixed; top:90px; left:0; width:100%; height:calc(100% - 90px); z-index:900; background:#0f172a;">
+        <iframe id="monitor-frame" style="width:100%; height:100%; border:none;" allowfullscreen></iframe>
+    </div>
+
+    <!-- IN-APP BATCH VIEW CONTAINER -->
+    <div id="batch-view-container"
+        style="display:none; position:fixed; top:90px; left:0; width:100%; height:calc(100% - 90px); z-index:900; background:#0f172a; overflow-y:auto; padding:20px;">
+        <div class="container-batch">
+            <div class="batch-header">
+                <div class="batch-title" style="color:#3b82f6; font-size:24px; font-weight:700;">
+                    <i class="fas fa-layer-group"></i> Toplu Araç Analizi
+                </div>
+            </div>
+
+            <div class="input-area" style="background:#1e293b; padding:20px; border-radius:12px; margin-bottom:20px;">
+                <h3 style="margin-bottom:10px; color:#cbd5e1;">Araç Listesi (Kapı Numaraları)</h3>
+                <p style="margin-bottom:10px; color:#64748b; font-size:13px;">Her satıra bir kapı numarası gelecek
+                    şekilde yapıştırın (Örn: B1520, K1234...)</p>
+                <textarea id="doorInput"
+                    style="width:100%; height:120px; background:#0f172a; border:1px solid #334155; color:#fff; padding:15px; border-radius:8px; font-family:'Inter', monospace; resize:vertical;"
+                    placeholder="B1001&#10;K2054&#10;M3021..."></textarea>
+                <button class="analyze-btn" onclick="analyzeBatch()"
+                    style="background:linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color:white; border:none; padding:12px 24px; border-radius:8px; font-weight:600; cursor:pointer; margin-top:15px; display:inline-flex; align-items:center; gap:8px;">
+                    <i class="fas fa-search"></i> LİSTEYİ ANALİZ ET
+                </button>
+            </div>
+
+            <div class="summary-cards" id="summCards"
+                style="display:none; grid-template-columns: repeat(3, 1fr); gap:20px; margin-bottom:20px;">
+                <div class="s-card"
+                    style="background:#1e293b; padding:20px; border-radius:12px; text-align:center; border-bottom: 4px solid #34d399;">
+                    <div class="s-val" id="count-green" style="color:#34d399; font-size:32px; font-weight:700;">0</div>
+                    <div class="s-lbl" style="color:#94a3b8;">Aktif & Hareketli</div>
+                </div>
+                <div class="s-card"
+                    style="background:#1e293b; padding:20px; border-radius:12px; text-align:center; border-bottom: 4px solid #fbbf24;">
+                    <div class="s-val" id="count-yellow" style="color:#fbbf24; font-size:32px; font-weight:700;">0</div>
+                    <div class="s-lbl" style="color:#94a3b8;">Seferde Ama Duruyor</div>
+                </div>
+                <div class="s-card"
+                    style="background:#1e293b; padding:20px; border-radius:12px; text-align:center; border-bottom: 4px solid #f87171;">
+                    <div class="s-val" id="count-red" style="color:#f87171; font-size:32px; font-weight:700;">0</div>
+                    <div class="s-lbl" style="color:#94a3b8;">Veri Yok / Sefer Yok</div>
+                </div>
+            </div>
+
+            <div id="resultsArea" style="display:none;">
+                <table class="results-table"
+                    style="width:100%; border-collapse:collapse; background:#1e293b; border-radius:12px; overflow:hidden;">
+                    <thead>
+                        <tr style="background:#0f172a; color:#94a3b8; text-transform:uppercase; font-size:13px;">
+                            <th style="padding:15px; text-align:left;">Kapı No</th>
+                            <th style="padding:15px; text-align:left;">Sefer Durumu</th>
+                            <th style="padding:15px; text-align:left;">Araç Durumu</th>
+                            <th style="padding:15px; text-align:left;">Hız / Mesafe / Detay</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resTableBody">
+                        <!-- JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tabName) {
+            const monContainer = document.getElementById('monitor-view-container');
+            const batchContainer = document.getElementById('batch-view-container');
+            const frame = document.getElementById('monitor-frame');
+            const tabs = document.querySelectorAll('.nav-tab-item');
+
+            // Update Tab UI
+            tabs.forEach(t => t.classList.remove('active'));
+
+            if (tabName === 'monitor') {
+                tabs[1].classList.add('active');
+                if (!frame.src) { frame.src = "/monitor"; }
+                monContainer.style.display = 'block';
+                if (batchContainer) batchContainer.style.display = 'none';
+            } else if (tabName === 'batch') {
+                tabs[2].classList.add('active');
+                monContainer.style.display = 'none';
+                if (batchContainer) batchContainer.style.display = 'block';
+            } else {
+                tabs[0].classList.add('active');
+                monContainer.style.display = 'none';
+                if (batchContainer) batchContainer.style.display = 'none';
+            }
+        }
+
+        // --- BATCH ANALYSIS LOGIC ---
+        async function analyzeBatch() {
+            const input = document.getElementById('doorInput').value;
+            const doors = input.split(/[\n,]+/).map(k => k.trim()).filter(k => k.length > 0);
+
+            if (doors.length === 0) {
+                alert("Lütfen araç numarası girin!");
+                return;
+            }
+
+            const btn = document.querySelector('.analyze-btn');
+
+            // Prevent double click
+            if (btn.disabled) return;
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analiz Yapılıyor...';
+            btn.style.opacity = '0.7';
+            btn.style.cursor = 'not-allowed';
+
+            try {
+                const response = await fetch('/api/batch-analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ doors: doors })
+                });
+
+                const data = await response.json();
+                renderBatchResults(data);
+
+            } catch (e) {
+                alert("Hata oluştu: " + e);
+            } finally {
+                btn.innerHTML = '<i class="fas fa-search"></i> LİSTEYİ ANALİZ ET';
+                btn.style.opacity = '1';
+                btn.disabled = false;
+                btn.style.cursor = 'pointer';
+            }
+        }
+
+        function renderBatchResults(data) {
+            const tbody = document.getElementById('resTableBody');
+            tbody.innerHTML = '';
+
+            let cGreen = 0, cYellow = 0, cRed = 0;
+
+            data.forEach(row => {
+                // Task Badge
+                let taskBadge = '';
+                if (row.task_status === 'VAR') {
+                    taskBadge = '<span style="background: rgba(16, 185, 129, 0.1); color: #34d399; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:600; border:1px solid rgba(16, 185, 129, 0.2);"><i class="fas fa-check"></i> SEFER VAR</span>';
+                } else {
+                    taskBadge = '<span style="background: rgba(239, 68, 68, 0.1); color: #f87171; padding:4px 10px; border-radius:12px; font-size:12px; font-weight:600; border:1px solid rgba(239, 68, 68, 0.2);"><i class="fas fa-times"></i> SEFER YOK</span>';
+                }
+
+                // Vehicle Badge
+                let vehicleBadge = '';
+                let vStatus = row.vehicle_status || 'BİLİNMİYOR';
+                let vStyle = '';
+                let vIcon = '';
+
+                if (vStatus.includes('HAREKETLİ')) {
+                    vStyle = 'color:#34d399;';
+                    vIcon = '<i class="fas fa-bus-alt"></i>';
+                    cGreen++;
+                } else if (vStatus === 'DURUYOR') {
+                    vStyle = 'color:#fbbf24;';
+                    vIcon = '<i class="fas fa-parking"></i>';
+                    cYellow++;
+                } else if (vStatus === 'SİNYAL KESİK') {
+                    vStyle = 'color:#f87171;';
+                    vIcon = '<i class="fas fa-signal"></i>';
+                } else {
+                    vStyle = 'color:#94a3b8;';
+                    vIcon = '<i class="fas fa-power-off"></i>';
+                    cRed++;
+                }
+
+                vehicleBadge = `<span style="${vStyle} font-weight:700; display:flex; gap:6px; align-items:center;">${vIcon} ${vStatus}</span>`;
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="font-weight:700; color:#fff; padding:15px; border-bottom:1px solid #334155;">${row.door}</td>
+                    <td style="padding:15px; border-bottom:1px solid #334155;">${taskBadge}</td>
+                    <td style="padding:15px; border-bottom:1px solid #334155;">${vehicleBadge}</td>
+                    <td style="font-family:monospace; color:#94a3b8; padding:15px; border-bottom:1px solid #334155;">${row.detail || '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('summCards').style.display = 'grid';
+            document.getElementById('resultsArea').style.display = 'block';
+
+            document.getElementById('count-green').innerText = cGreen;
+            document.getElementById('count-yellow').innerText = cYellow;
+            document.getElementById('count-red').innerText = cRed;
+        }
+    </script>
+    <style>
+        /* Nav Tab Styles */
+        .nav-tabs-header {
+            display: flex;
+            align-items: center;
+            background: #1e293b;
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+        }
+
+        .nav-tab-item {
+            padding: 8px 16px;
+            color: #94a3b8;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .nav-tab-item:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .nav-tab-item.active {
+            background: #3b82f6;
+            color: #fff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        .nav-tab-divider {
+            width: 1px;
+            height: 20px;
+            background: #475569;
+            margin: 0 4px;
+        }
+    </style>
+</body>
+
+</html>

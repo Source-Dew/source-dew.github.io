@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>İETT PC ÇOKLU MOD</title>
+    <link rel="icon" href="/static/img/icon.ico" type="image/x-icon" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #0f172a;
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header Removed */
+
+        .grid-container {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 4px;
+            background: #000;
+        }
+
+        .monitor-card {
+            position: relative;
+            background: #1e293b;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .map-container {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .card-overlay {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: rgba(15, 23, 42, 0.95);
+            /* Slightly darker/more opaque */
+            padding: 10px;
+            /* More padding */
+            border-radius: 8px;
+            border: 1px solid #334155;
+            display: flex;
+            gap: 10px;
+            /* More gap */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .door-input {
+            background: #0f172a;
+            border: 1px solid #475569;
+            color: #fff;
+            padding: 8px 12px;
+            /* Bigger padding */
+            border-radius: 6px;
+            width: 90px;
+            /* Wider */
+            font-weight: 700;
+            font-size: 14px;
+            /* Larger font */
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+        }
+
+        .door-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+        }
+
+        .status-badge {
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            /* Larger font */
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 90px;
+            justify-content: center;
+        }
+
+        .status-waiting {
+            background: #334155;
+            color: #94a3b8;
+        }
+
+        .status-active {
+            background: #065f46;
+            color: #34d399;
+            border: 1px solid #059669;
+        }
+
+        .status-offline {
+            background: #7f1d1d;
+            color: #fca5a5;
+            border: 1px solid #b91c1c;
+        }
+
+        .leaflet-control-attribution {
+            display: none !important;
+        }
+
+        /* Detailed Map Styles */
+        .time-label-start,
+        .time-label-end {
+            transition: all 0.3s ease;
+        }
+
+        .time-tooltip {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #3b82f6;
+            color: #3b82f6;
+            font-weight: bold;
+            font-size: 11px;
+            padding: 2px 5px;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        .time-tooltip::before {
+            border-right-color: #3b82f6;
+        }
+
+        /* --- DYNAMIC SCALING MODES --- */
+
+        /* 1. Medium Scale (5-8 Screens) */
+        .grid-container.scale-medium .card-overlay {
+            padding: 6px;
+            gap: 6px;
+            top: 6px;
+            left: 6px;
+        }
+
+        .grid-container.scale-medium .door-input {
+            width: 70px;
+            padding: 5px 8px;
+            font-size: 12px;
+        }
+
+        .grid-container.scale-medium .status-badge {
+            min-width: 70px;
+            padding: 5px 8px;
+            font-size: 11px;
+        }
+
+        /* 2. Small Scale (9+ Screens) */
+        .grid-container.scale-small .card-overlay {
+            padding: 4px;
+            gap: 4px;
+            top: 4px;
+            left: 4px;
+        }
+
+        .grid-container.scale-small .door-input {
+            width: 55px;
+            padding: 3px 5px;
+            font-size: 11px;
+        }
+
+        .grid-container.scale-small .status-badge {
+            min-width: 60px;
+            padding: 3px 5px;
+            font-size: 10px;
+            gap: 4px;
+        }
+
+        .grid-container.scale-small .status-badge i {
+            display: none;
+            /* Hide icon to save space */
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header Removed -->
+
+    <!-- GRID CONTROLS OVERLAY -->
+    <div class="grid-controls" id="gridControlPanel">
+        <div class="control-title">EKRAN SAYISI</div>
+        <div class="control-buttons">
+            <button onclick="changeGrid(1)">1</button>
+            <button onclick="changeGrid(4)">4</button>
+            <button onclick="changeGrid(6)">6</button>
+            <button onclick="changeGrid(8)">8</button>
+            <button onclick="changeGrid(9)">9</button>
+            <button onclick="changeGrid(12)">12</button>
+        </div>
+        <div style="margin-top:5px; font-size:10px; color:#64748b; text-align:center;">
+            (Veya klavyeden rakam tuşlarına basın)
+        </div>
+    </div>
+
+    <!-- MAIN GRID CONTAINER (Generated by JS) -->
+    <div class="grid-container" id="gridContainer"></div>
+
+    <script>
+        // --- SETUP ---
+        const maps = {};
+        const layerGroups = {};
+        // Store targets in a proxy or object. We'll support up to 16 to be safe.
+        const targets = {};
+
+        let loopTimeout = null;
+        let currentGridSize = 4;
+
+        // --- CONFIG ---
+        const MAX_SCREENS = 12;
+
+        // Clear persistence on load
+        localStorage.removeItem('monitorTargets');
+
+        // --- INIT ---
+        window.addEventListener('load', () => {
+            initGrid(4);
+
+            // Keyboard Shortcuts for Grid Size
+            document.addEventListener('keydown', (e) => {
+                // Ignore if typing in an input
+                if (e.target.tagName === 'INPUT') return;
+
+                const key = parseInt(e.key);
+                if (!isNaN(key) && key > 0 && key <= 9) {
+                    changeGrid(key);
+                }
+                // Handle 0 as 10? Or specific keys for 10-12? 
+                // Let's stick to 1-9 for direct keys, use UI for others or shortcuts
+                // User requirement: "5 e basıcam 5 pencere olacak"
+            });
+        });
+
+        function changeGrid(size) {
+            if (size === currentGridSize) return;
+            if (size > MAX_SCREENS) size = MAX_SCREENS;
+            initGrid(size);
+        }
+
+        function initGrid(count) {
+            currentGridSize = count;
+            const container = document.getElementById('gridContainer');
+
+            // 1. Calculate Grid Dimensions (Best Fit)
+            let cols = Math.ceil(Math.sqrt(count));
+            let rows = Math.ceil(count / cols);
+
+            // Adjust specific nicer layouts
+            if (count === 8) { cols = 4; rows = 2; }
+            if (count === 10) { cols = 5; rows = 2; }
+            if (count === 12) { cols = 4; rows = 3; }
+
+            // 2. Clear Container & Maps
+            container.innerHTML = '';
+            // Destroy existing maps properly
+            Object.keys(maps).forEach(k => {
+                if (maps[k]) {
+                    maps[k].remove();
+                    delete maps[k];
+                    delete layerGroups[k];
+                }
+            });
+
+            // 3. Set Grid Style
+            container.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            container.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+
+            // 4. Dynamic UI Scaling
+            container.classList.remove('scale-medium', 'scale-small');
+            if (count > 4 && count <= 8) {
+                container.classList.add('scale-medium');
+            } else if (count > 8) {
+                container.classList.add('scale-small');
+            }
+
+            // 5. Generate Cards
+            for (let i = 1; i <= count; i++) {
+                // Restore existing target if any
+                const existingVal = targets[i] || '';
+
+                const card = document.createElement('div');
+                card.className = 'monitor-card';
+                card.innerHTML = `
+                    <div class="card-overlay">
+                        <input type="text" class="door-input" id="input-${i}" placeholder="KOD" 
+                            value="${existingVal}" onchange="updateTarget(${i}, this.value)">
+                        <div class="status-badge status-waiting" id="status-${i}">BEKLİYOR</div>
+                    </div>
+                    <div id="map-${i}" class="map-container"></div>
+                `;
+                container.appendChild(card);
+
+                // Init Map
+                const mapId = `map-${i}`;
+                const lightMap = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+                const satMap = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+
+                const map = L.map(mapId, { zoomControl: false, attributionControl: false }).setView([41.0082, 28.9784], 11);
+
+                const lightLayer = L.tileLayer(lightMap, { maxZoom: 19 }).addTo(map);
+                const satLayer = L.tileLayer(satMap, { maxZoom: 19, attribution: 'Esri' });
+
+                // Checkbox Toggle Logic (Overlay)
+                const overlayMaps = { "🛰️ Uydu": satLayer };
+                L.control.layers(null, overlayMaps, { position: 'topright' }).addTo(map);
+
+                maps[i] = map;
+                layerGroups[i] = L.layerGroup().addTo(map);
+
+                // Trigger update if we had a value
+                if (existingVal) {
+                    // Slight delay to allow map to size
+                    setTimeout(() => updateTarget(i, existingVal, true), 100);
+                }
+            }
+
+            // Restart loop if needed (it runs continuously anyway)
+        }
+
+        function updateTarget(id, val, force = false) {
+            val = val.trim();
+            if (!force && val === targets[id]) return;
+
+            targets[id] = val.toUpperCase();
+
+            const statusEl = document.getElementById(`status-${id}`);
+            if (statusEl) {
+                statusEl.className = 'status-badge status-waiting';
+                statusEl.innerText = 'ARANIYOR...';
+            }
+            if (layerGroups[id]) layerGroups[id].clearLayers();
+
+            // INSTANT UPDATE
+            if (loopTimeout) clearTimeout(loopTimeout);
+            loop();
+        }
+
+        // --- DATA LOOP ---
+        async function loop() {
+            try {
+                const res = await fetch('/api/veriler?t=' + Date.now());
+                if (!res.ok) throw new Error("Fetch failed");
+                const data = await res.json();
+
+                if (!Array.isArray(data)) return;
+
+                // Loop through current grid size
+                for (let i = 1; i <= currentGridSize; i++) {
+                    const targetCode = targets[i];
+                    if (!targetCode) continue;
+
+                    const clean = (str) => (str || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+                    const searchClean = clean(targetCode);
+
+                    const vehicle = data.find(v => {
+                        return clean(v.vehicleDoorCode) === searchClean ||
+                            clean(v.busDoorNumber) === searchClean ||
+                            clean(v.doorNumber) === searchClean;
+                    });
+
+                    const statusEl = document.getElementById(`status-${i}`);
+                    if (!statusEl) continue; // Safety
+
+                    if (!vehicle && i === 1 && data.length > 0) {
+                        // Debug log only for first slot
+                        // console.log(`Hedef: ${searchClean} BULUNAMADI.`);
+                    }
+
+                    if (vehicle && vehicle.latitude && vehicle.longitude) {
+                        try {
+                            // Robust Time Parsing logic (Copied from previous)
+                            let lastTime;
+                            let dateStr = vehicle.lastLocationDate || "";
+                            const timeStr = vehicle.lastLocationTime || "";
+                            dateStr = dateStr.replace(/\./g, '-');
+
+                            if (dateStr && timeStr) {
+                                const dParts = dateStr.split('-');
+                                const tParts = timeStr.split(':');
+                                if (dParts.length === 3 && tParts.length >= 2) {
+                                    lastTime = new Date(
+                                        parseInt(dParts[2]), parseInt(dParts[1]) - 1, parseInt(dParts[0]),
+                                        parseInt(tParts[0]), parseInt(tParts[1]), parseInt(tParts[2] || 0)
+                                    );
+                                }
+                            }
+
+                            if (!lastTime && timeStr.includes(':')) {
+                                const parts = timeStr.split(':');
+                                const now = new Date();
+                                lastTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(),
+                                    parseInt(parts[0]), parseInt(parts[1]), parseInt(parts[2] || 0));
+                            }
+                            if (!lastTime || isNaN(lastTime.getTime())) lastTime = new Date();
+
+                            const now = new Date();
+                            const diffMins = Math.floor((now - lastTime) / 60000);
+                            const displayTime = lastTime.toLocaleString('tr-TR', {
+                                day: '2-digit', month: '2-digit', year: 'numeric',
+                                hour: '2-digit', minute: '2-digit', second: '2-digit'
+                            });
+
+                            if (!isNaN(diffMins) && diffMins > 5) {
+                                statusEl.className = 'status-badge status-offline';
+                                statusEl.innerHTML = `<i class="fas fa-exclamation-circle"></i> PASİF (${displayTime})`;
+                            } else {
+                                statusEl.className = 'status-badge status-active';
+                                statusEl.innerHTML = `<i class="fas fa-wifi"></i> CANLI (${displayTime})`;
+                            }
+
+                            const robustTimeStr = lastTime.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+                            // Call map update
+                            if (maps[i]) {
+                                await updateMapForSlot(i, targetCode, Number(vehicle.latitude), Number(vehicle.longitude), robustTimeStr);
+                            }
+
+                        } catch (err) {
+                            console.error("Time Parse Error:", err);
+                            statusEl.className = 'status-badge status-waiting';
+                            statusEl.innerText = 'VERİ HATASI';
+                        }
+                    }
+                }
+            } catch (e) { console.log(e); }
+
+            loopTimeout = setTimeout(loop, 5000);
+        }
+
+        // --- DETAILED DRAWING (Kept same logic, just safety checks) ---
+        async function updateMapForSlot(slotId, doorNumber, currentLat, currentLng, lastTime, validTimestampLimit) {
+            const map = maps[slotId];
+            const lg = layerGroups[slotId];
+            if (!map || !lg) return;
+
+            try {
+                const res = await fetch(`/api/history/${doorNumber}?minutes=5`);
+                let history = await res.json();
+                if (!Array.isArray(history)) history = [];
+
+                if (validTimestampLimit) {
+                    const limitSec = (validTimestampLimit / 1000) + 300;
+                    history = history.filter(h => h.timestamp <= limitSec);
+                }
+
+                history.sort((a, b) => a.timestamp - b.timestamp);
+
+                if (history.length === 0 && currentLat && currentLng) {
+                    history.push({ lat: currentLat, lng: currentLng, time: lastTime, timestamp: 0 });
+                }
+
+                lg.clearLayers();
+                if (history.length === 0) return;
+
+                const latlngs = history.map(h => [h.lat, h.lng]);
+                const polyline = L.polyline(latlngs, {
+                    color: '#ef4444', weight: 4, opacity: 0.8, smoothFactor: 1
+                }).addTo(lg);
+
+                const startTime = history[0].timestamp;
+                const endTime = history[history.length - 1].timestamp;
+
+                history.forEach((h, index) => {
+                    if (index === 0 || index === history.length - 1) return;
+                    const m = L.circleMarker([h.lat, h.lng], {
+                        radius: 4, fillColor: "#fff", color: "#3b82f6", weight: 2, opacity: 0.8, fillOpacity: 0.8
+                    }).addTo(lg);
+                    if (Math.abs(h.timestamp - startTime) > 5 && Math.abs(endTime - h.timestamp) > 5) {
+                        m.bindTooltip(h.time, { permanent: true, direction: 'right', className: 'time-tooltip', offset: [10, 0] });
+                    }
+                });
+
+                if (history.length > 1) {
+                    const start = history[0];
+                    L.circleMarker([start.lat, start.lng], { radius: 12, fillColor: "#10b981", color: "#fff", weight: 4, opacity: 1, fillOpacity: 1 }).addTo(lg);
+
+                    // Start Label
+                    L.marker([start.lat, start.lng], {
+                        icon: L.divIcon({
+                            className: 'time-label-start',
+                            html: `<div style="background: linear-gradient(to bottom, #ffffff 0%, #f0fdf4 100%); padding:10px 14px; border:2px solid #10b981; border-radius:12px; font-size:11px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); white-space: nowrap; text-align:center; margin-left: -40px;">
+                                <div style="color:#10b981; font-weight:800; font-size:10px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">▲ BAŞLANGIÇ</div>
+                                <div style="color:#1f2937; font-weight:700; font-size:13px;">${start.time}</div>
+                               </div>`,
+                            iconSize: [140, 60], iconAnchor: [40, 66]
+                        })
+                    }).addTo(lg);
+                }
+
+                // End Marker
+                const end = history[history.length - 1];
+                L.marker([end.lat, end.lng], {
+                    icon: L.divIcon({
+                        html: '<div style="background:#facc15; border:2px solid #fff; border-radius:50%; width:28px; height:28px; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 5px rgba(0,0,0,0.5);"><i class="fas fa-bus" style="color:#000; font-size:14px;"></i></div>',
+                        className: '',
+                        iconSize: [28, 28], iconAnchor: [14, 14]
+                    })
+                }).addTo(lg);
+
+                L.marker([end.lat, end.lng], {
+                    icon: L.divIcon({
+                        className: 'time-label-end',
+                        html: `<div style="background: linear-gradient(to bottom, #ffffff 0%, #fef2f2 100%); padding:10px 14px; border:2px solid #ef4444; border-radius:12px; font-size:11px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); white-space: nowrap; text-align:center; margin-left: -40px; transform:translateY(-80px);">
+                            <div style="color:#ef4444; font-weight:800; font-size:10px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">● SON KONUM</div>
+                            <div style="color:#1f2937; font-weight:700; font-size:13px;">${lastTime || end.time}</div>
+                           </div>`,
+                        iconSize: [140, 60], iconAnchor: [40, 10]
+                    })
+                }).addTo(lg);
+
+                map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+
+            } catch (e) {
+                // console.warn(e); 
+            }
+        }
+    </script>
+
+    <style>
+        .grid-controls {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: #1e293b;
+            padding: 8px 12px;
+            border-radius: 8px;
+            z-index: 9999;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            border: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .control-title {
+            font-size: 11px;
+            color: #94a3b8;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 4px;
+        }
+
+        .control-buttons button {
+            background: #0f172a;
+            border: 1px solid #334155;
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .control-buttons button:hover {
+            background: #3b82f6;
+            border-color: #3b82f6;
+        }
+    </style>
+</body>
+
+</html>
