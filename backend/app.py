@@ -131,6 +131,34 @@ def save_data_to_db(vehicle_list):
             print(f"DB Write Error: {e}")
 
 # --- İETT FONKSİYONLARI ---
+def fix_timezone_data(data_list):
+    """API'den gelen UTC verileri UTC+3 (Istanbul) saatine çevirir."""
+    if not data_list: return []
+    fixed = []
+    for item in data_list:
+        v = item.copy()
+        date_str = v.get('lastLocationDate')
+        time_str = v.get('lastLocationTime')
+        
+        if date_str and time_str:
+            try:
+                # Formatlar: 2025-12-14T00:00:00 ve 15:03:11
+                clean_date = date_str[:10] 
+                full_str = f"{clean_date} {time_str}"
+                
+                # UTC varsayarak parse et
+                dt_utc = datetime.strptime(full_str, "%Y-%m-%d %H:%M:%S")
+                # 3 saat ekle
+                dt_tr = dt_utc + timedelta(hours=3)
+                
+                # geri yaz
+                v['lastLocationDate'] = dt_tr.strftime("%Y-%m-%dT00:00:00")
+                v['lastLocationTime'] = dt_tr.strftime("%H:%M:%S")
+            except:
+                pass
+        fixed.append(v)
+    return fixed
+
 def get_pubkey(session):
     if GLOBAL_CACHE["pubkey"]: return GLOBAL_CACHE["pubkey"]
     try:
@@ -189,6 +217,9 @@ def fetch_from_iett_internal():
             else:
                 result_list = final_data
                 
+            # Saat Düzeltmesi (UTC -> TRT)
+            result_list = fix_timezone_data(result_list)
+            
             return result_list
 
     except Exception as e:
