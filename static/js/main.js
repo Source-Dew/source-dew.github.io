@@ -21,10 +21,30 @@ let polyline = null;
 let markers = [];
 let cachedBackendHistory = []; // Cache for backend history to avoid re-fetching on live update
 
+// Safe Storage Wrapper
+const safeStorage = {
+    getItem: (key) => {
+        try {
+            return localStorage.getItem(key);
+        } catch (e) {
+            console.warn('Storage access denied:', e);
+            return null;
+        }
+    },
+    setItem: (key, value) => {
+        try {
+            localStorage.setItem(key, value);
+        } catch (e) {
+            console.warn('Storage access denied:', e);
+        }
+    }
+};
+
 // FAVORITES
 let favoriteVehicles = [];
 try {
-    favoriteVehicles = JSON.parse(localStorage.getItem('favVehicles') || '[]');
+    const stored = safeStorage.getItem('favVehicles');
+    favoriteVehicles = stored ? JSON.parse(stored) : [];
 } catch (e) { favoriteVehicles = []; }
 
 
@@ -281,11 +301,7 @@ function toggleFavorite(door) {
         favoriteVehicles.push(door);
     }
 
-    try {
-        localStorage.setItem('favVehicles', JSON.stringify(favoriteVehicles));
-    } catch (e) {
-        console.warn('LocalStorage erişim hatası, favoriler kaydedilemedi:', e);
-    }
+    safeStorage.setItem('favVehicles', JSON.stringify(favoriteVehicles));
 
     filterVehicles(); // Re-render to sort
 }
