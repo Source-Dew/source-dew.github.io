@@ -430,107 +430,37 @@ def simplify_tasks(tasks):
 
 
 
-# --- AUTHENTICATION ---
+# --- AUTHENTICATION DISABLED ---
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user' not in session:
-            return redirect(url_for('login'))
+        # Şifre kontrolünü iptal ettik, direkt geçiş izni ver
         return f(*args, **kwargs)
     return decorated_function
 
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user' not in session or session.get('user') != 'admin':
-            return jsonify({"error": "Unauthorized"}), 403
+        # Admin kontrolünü de devre dışı bırakıyoruz (veya herkese açık yapıyoruz)
+        # Güvenlik gerekirse burayı açma, ama şimdilik request üzerine açıyoruz.
         return f(*args, **kwargs)
     return decorated_function
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
-        remember = request.form.get('remember')
-
-        # Try Supabase first
-        user_id = None
-        auth_success = False
-        
-        if supabase:
-            try:
-                print(f"[DEBUG] Trying Supabase login for {username}")
-                response = supabase.table('users').select('*').eq('username', username).eq('password', password).execute()
-                
-                if response.data and len(response.data) > 0:
-                    user_id = response.data[0]['id']
-                    auth_success = True
-                    print(f"[DEBUG] Supabase login successful")
-            except Exception as e:
-                print(f"[DEBUG] Supabase failed: {e}, falling back to SQLite")
-        
-        # Fallback to local SQLite if Supabase failed or not connected
-        if not auth_success:
-            try:
-                with sqlite3.connect(DB_NAME) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute('''
-                        CREATE TABLE IF NOT EXISTS users (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            username TEXT UNIQUE NOT NULL,
-                            password TEXT NOT NULL
-                        )
-                    ''')
-                    
-                    # Default admin checks
-                    cursor.execute('SELECT * FROM users WHERE username = ?', ('admin',))
-                    if not cursor.fetchone():
-                        cursor.execute('INSERT INTO users (username, password) VALUES (?, ?)', ('admin', 'Bolu1434'))
-                        conn.commit()
-                    
-                    cursor.execute('SELECT * FROM users WHERE username = ? AND password = ?', (username, password))
-                    user = cursor.fetchone()
-                    
-                    if user:
-                        user_id = user[0]
-                        auth_success = True
-                        print(f"[DEBUG] SQLite login successful")
-            except Exception as e:
-                print(f"Login error: {e}")
-                return render_template('login.html', error='Giriş sırasında bir hata oluştu')
-
-        if auth_success:
-            session['user'] = username
-            session['user_id'] = user_id
-            if remember:
-                session.permanent = True
-                app.permanent_session_lifetime = timedelta(days=30)
-            
-            resp = make_response(redirect(url_for('home')))
-            if remember:
-                resp.set_cookie('saved_username', username, max_age=30*24*60*60)
-            else:
-                resp.set_cookie('saved_username', '', expires=0)
-            return resp
-        else:
-            return render_template('login.html', error='Kullanıcı adı veya şifre hatalı')
-    
-    if 'user' in session:
-        return redirect(url_for('home'))
-        
-    saved_username = request.cookies.get('saved_username')
-    return render_template('login.html', saved_username=saved_username)
+    # Login sayfasına gerek yok, direkt ana sayfaya gönder
+    return redirect(url_for('home'))
 
 @app.route('/logout')
 def logout():
     session.clear()
-    return redirect(url_for('login'))
+    return redirect(url_for('home'))
 
 @app.route('/')
 @login_required
 def home():
-    return render_template('index.html', username=session.get('user'))
+    # Username'i varsayılan olarak tanımla
+    return render_template('index.html', username="Ziyaretçi")
 
 @app.route('/monitor')
 @login_required
