@@ -85,12 +85,7 @@ function normalizeText(value) {
 }
 
 function toTRTime(timeStr) {
-    if (!timeStr) return '--:--:--';
-    try {
-        let [h, m, s] = timeStr.split(':').map(Number);
-        h = (h + 3) % 24;
-        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-    } catch (e) { return timeStr; }
+    return timeStr || '--:--:--';
 }
 
 function mapCompanyName(name) {
