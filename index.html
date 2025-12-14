@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>İETT Anlık PC Veri</title>
-    <link rel="icon" href="/static/img/icon.ico" type="image/x-icon" />
+    <link rel="icon" href="./static/img/icon.ico" type="image/x-icon" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <!-- İkon Paketi -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -15,12 +15,12 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    <link rel="stylesheet" href="/static/css/style.css">
-    <link rel="manifest" href="/static/manifest.json">
+    <link rel="stylesheet" href="./static/css/style.css">
+    <link rel="manifest" href="./static/manifest.json">
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/static/js/sw.js')
+                navigator.serviceWorker.register('./static/js/sw.js')
                     .then(reg => console.log('SW registered'))
                     .catch(err => console.log('SW failed', err));
             });
@@ -102,9 +102,9 @@
         <div class="header">
             <div class="logo-section">
                 <div class="logo-container">
-                    <img src="/static/img/ibb_logo.png" alt="IBB Logo">
+                    <img src="./static/img/ibb_logo.png" alt="IBB Logo">
                     <div class="logo-divider"></div>
-                    <img src="/static/img/iett_logo.png" alt="IETT Logo">
+                    <img src="./static/img/iett_logo.png" alt="IETT Logo">
                 </div>
                 <div class="title-section">
                     <!-- Navigation Tabs -->
@@ -391,14 +391,15 @@
     <!-- User Profile Section -->
     <div class="user-profile-section">
         <div class="profile-content-wrapper">
-            <img src="/static/img/iett_logo.png" alt="Profile" class="profile-img">
+            <img src="./static/img/iett_logo.png" alt="Profile" class="profile-img">
             <div class="profile-info">
                 <div class="profile-name" id="user-display">Ziyaretçi</div>
                 <div class="profile-role" id="user-role">Misafir</div>
             </div>
         </div>
         <div class="profile-actions">
-            <button onclick="openAdminPanel()" class="admin-panel-btn" title="Admin Paneli" id="admin-btn" style="display:none;">
+            <button onclick="openAdminPanel()" class="admin-panel-btn" title="Admin Paneli" id="admin-btn"
+                style="display:none;">
                 <i class="fas fa-shield-alt"></i>
             </button>
             <a href="/logout" class="logout-btn" title="Çıkış Yap">
@@ -407,7 +408,7 @@
         </div>
     </div>
 
-    <script src="/static/js/main.js?v=1.4"></script>
+    <script src="./static/js/main.js?v=1.4"></script>
 
     <!-- IN-APP MONITOR VIEW OVERLAY -->
     <div id="monitor-view-container"

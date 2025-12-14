@@ -280,7 +280,13 @@ function toggleFavorite(door) {
     } else {
         favoriteVehicles.push(door);
     }
-    localStorage.setItem('favVehicles', JSON.stringify(favoriteVehicles));
+
+    try {
+        localStorage.setItem('favVehicles', JSON.stringify(favoriteVehicles));
+    } catch (e) {
+        console.warn('LocalStorage erişim hatası, favoriler kaydedilemedi:', e);
+    }
+
     filterVehicles(); // Re-render to sort
 }
 
