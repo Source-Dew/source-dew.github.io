@@ -919,9 +919,22 @@ function closeTasks() {
     document.getElementById('taskModal').classList.remove('active');
 }
 
+// Check User Session
+async function checkUserStatus() {
+    try {
+        // Simple check, or assume Admin for demo if needed.
+        // For now, let's just show "Admin" since we are in a transition phase.
+        // Ideally we fetch /api/me from backend.
+        // document.getElementById('user-display').textContent = 'Admin';
+        // document.getElementById('user-role').textContent = 'Yönetici';
+        // document.getElementById('admin-btn').style.display = 'flex';
+    } catch (e) { console.log(e); }
+}
+
 // Start Application
 document.addEventListener('DOMContentLoaded', () => {
     console.log("App starting...");
+    checkUserStatus(); // Check user
     fetchData(); // Initial fetch
     setInterval(fetchData, 2000); // Poll every 2 seconds
 });

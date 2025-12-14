@@ -393,18 +393,14 @@
         <div class="profile-content-wrapper">
             <img src="/static/img/iett_logo.png" alt="Profile" class="profile-img">
             <div class="profile-info">
-                <div class="profile-name">{{ username }}</div>
-                <div class="profile-role">
-                    {% if username == 'admin' %}Yönetici{% else %}Personel{% endif %}
-                </div>
+                <div class="profile-name" id="user-display">Ziyaretçi</div>
+                <div class="profile-role" id="user-role">Misafir</div>
             </div>
         </div>
         <div class="profile-actions">
-            {% if username == 'admin' %}
-            <button onclick="openAdminPanel()" class="admin-panel-btn" title="Admin Paneli">
+            <button onclick="openAdminPanel()" class="admin-panel-btn" title="Admin Paneli" id="admin-btn" style="display:none;">
                 <i class="fas fa-shield-alt"></i>
             </button>
-            {% endif %}
             <a href="/logout" class="logout-btn" title="Çıkış Yap">
                 <i class="fas fa-power-off"></i>
             </a>

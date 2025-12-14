@@ -33,7 +33,7 @@ frontend_dir = os.path.join(base_dir, '..', 'frontend')
 app = Flask(__name__, template_folder=os.path.join(base_dir, '..'), static_folder=os.path.join(base_dir, '..', 'static'))
 Compress(app)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'iett-default-secret-key-2025')
-CORS(app, resources={r"/api/*": {"origins": ["https://source-dews.github.io", "http://127.0.0.1:5500", "http://localhost:5500"]}}, supports_credentials=True)
+CORS(app, resources={r"/api/*": {"origins": ["https://source-dews.github.io", "https://source-dew.github.io", "http://127.0.0.1:5500", "http://localhost:5500"]}}, supports_credentials=True)
 
 # Lokal geçmiş veritabanı yolu (Vercel için /tmp kullanıyoruz)
 HISTORY_DB = "/tmp/vehicle_history.db" if os.getenv('VERCEL') else os.getenv('HISTORY_DB', 'vehicle_history.db')
