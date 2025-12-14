@@ -1,4 +1,5 @@
 from flask import Flask, render_template, jsonify, make_response, request, session, redirect, url_for
+from flask_cors import CORS
 from functools import wraps
 import requests
 import sys
@@ -29,9 +30,10 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 frontend_dir = os.path.join(base_dir, '..', 'frontend')
-app = Flask(__name__, template_folder=os.path.join(frontend_dir, 'templates'), static_folder=os.path.join(frontend_dir, 'static'))
+app = Flask(__name__, template_folder=os.path.join(base_dir, '..'), static_folder=os.path.join(base_dir, '..', 'static'))
 Compress(app)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'iett-default-secret-key-2025')
+CORS(app, resources={r"/api/*": {"origins": ["https://source-dews.github.io", "http://127.0.0.1:5500", "http://localhost:5500"]}}, supports_credentials=True)
 
 # Lokal geçmiş veritabanı yolu (Vercel için /tmp kullanıyoruz)
 HISTORY_DB = "/tmp/vehicle_history.db" if os.getenv('VERCEL') else os.getenv('HISTORY_DB', 'vehicle_history.db')

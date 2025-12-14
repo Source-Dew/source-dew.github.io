@@ -1,3 +1,10 @@
+const API_BASE = 'https://source-dews-github-io.vercel.app';
+
+async function apiFetch(endpoint, options = {}) {
+    const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint}`;
+    return fetch(url, options);
+}
+
 let allVehicles = [];
 let currentFilter = 'all';
 let currentSearch = '';
@@ -79,7 +86,7 @@ updateClock(); setInterval(updateClock, 1000);
 async function fetchData() {
     document.getElementById('spinner').classList.add('active');
     try {
-        const response = await fetch('/api/veriler?t=' + Date.now());
+        const response = await apiFetch('/api/veriler?t=' + Date.now());
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -514,7 +521,7 @@ async function updateMapDisplay(doorNumber, currentLat, currentLng, lastDate, la
 
         if (!skipBackend) {
             try {
-                const res = await fetch(`/api/history/${doorNumber}?minutes=5`);
+                const res = await apiFetch(`/api/history/${doorNumber}?minutes=5`);
                 const data = await res.json();
                 cachedBackendHistory = Array.isArray(data) ? data : [];
             } catch (e) {
@@ -670,7 +677,7 @@ async function loadVehicleTasks(doorNumber) {
     bodies.forEach(body => body.innerHTML = loadingRow);
 
     try {
-        const res = await fetch(`/api/tasks/${doorNumber}`);
+        const res = await apiFetch(`/api/tasks/${doorNumber}`);
         const data = await res.json();
 
         // Şoför Bilgisini Güncelle (İlk görevden al)
@@ -774,7 +781,7 @@ async function fetchUsers() {
     tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:10px;">Yükleniyor...</td></tr>';
 
     try {
-        const res = await fetch('/api/admin/users');
+        const res = await apiFetch('/api/admin/users');
         if (!res.ok) throw new Error('Yetkisiz işlem');
         const users = await res.json();
 
@@ -826,7 +833,7 @@ async function addUser() {
     }
 
     try {
-        const res = await fetch('/api/admin/users', {
+        const res = await apiFetch('/api/admin/users', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
@@ -848,7 +855,7 @@ async function changePassword(id, username) {
     if (!newPass) return; // İptal edildi
 
     try {
-        const res = await fetch(`/api/admin/users/${id}/password`, {
+        const res = await apiFetch(`/api/admin/users/${id}/password`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ password: newPass })
@@ -867,7 +874,7 @@ async function changeUsername(id, currentUsername) {
     if (!newUsername || newUsername === currentUsername) return;
 
     try {
-        const res = await fetch(`/api/admin/users/${id}/username`, {
+        const res = await apiFetch(`/api/admin/users/${id}/username`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: newUsername })
@@ -885,7 +892,7 @@ async function deleteUser(id) {
     if (!confirm('Bu kullanıcıyı silmek istediğinize emin misiniz?')) return;
 
     try {
-        const res = await fetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+        const res = await apiFetch(`/api/admin/users/${id}`, { method: 'DELETE' });
         const data = await res.json();
         if (data.error) throw new Error(data.error);
         fetchUsers();
