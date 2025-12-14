@@ -316,7 +316,8 @@ def get_history_points(door_number: str, minutes: int = 15, max_points: int = 18
     current_time_str = now.strftime("%H:%M:%S")
     for lat, lng, ts in rows:
         try:
-            dt = datetime.fromtimestamp(ts)
+            # UTC Timestamp -> Turkey Time
+            dt = datetime.fromtimestamp(ts, pytz.timezone('Europe/Istanbul'))
             time_str = dt.strftime("%H:%M:%S")
         except Exception:
             time_str = "--:--:--"
