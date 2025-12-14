@@ -84,6 +84,15 @@ function normalizeText(value) {
     return (value || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "").trim();
 }
 
+function toTRTime(timeStr) {
+    if (!timeStr) return '--:--:--';
+    try {
+        let [h, m, s] = timeStr.split(':').map(Number);
+        h = (h + 3) % 24;
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    } catch (e) { return timeStr; }
+}
+
 function mapCompanyName(name) {
     const raw = (name || '').trim();
 
@@ -639,7 +648,7 @@ async function updateMapDisplay(doorNumber, currentLat, currentLng, lastDate, la
                 className: 'time-label-start',
                 html: `<div style="background: linear-gradient(to bottom, #ffffff 0%, #f0fdf4 100%); padding:10px 14px; border:2px solid #10b981; border-radius:12px; font-size:11px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); white-space: nowrap; text-align:center; margin-left: -40px;">
                                 <div style="color:#10b981; font-weight:800; font-size:10px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">▲ BAŞLANGIÇ</div>
-                                <div style="color:#1f2937; font-weight:700; font-size:13px;">${start.time}</div>
+                                <div style="color:#1f2937; font-weight:700; font-size:13px;">${toTRTime(start.time)}</div>
                                </div>`,
                 iconSize: [140, 60],
                 iconAnchor: [40, 66]
@@ -654,7 +663,7 @@ async function updateMapDisplay(doorNumber, currentLat, currentLng, lastDate, la
                 className: 'time-label-end',
                 html: `<div style="background: linear-gradient(to bottom, #ffffff 0%, #fef2f2 100%); padding:10px 14px; border:2px solid #ef4444; border-radius:12px; font-size:11px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); white-space: nowrap; text-align:center; margin-left: -40px;">
                                 <div style="color:#ef4444; font-weight:800; font-size:10px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">● SON KONUM</div>
-                                <div style="color:#1f2937; font-weight:700; font-size:13px;">${end.time}</div>
+                                <div style="color:#1f2937; font-weight:700; font-size:13px;">${toTRTime(end.time)}</div>
                                </div>`,
                 iconSize: [140, 60],
                 iconAnchor: [40, 66]
